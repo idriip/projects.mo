@@ -1,0 +1,98 @@
+import Debug "mo:base/Debug";
+
+actor HarryPotterTrivia {
+
+    // Structure to hold each trivia question
+    type Question = {
+        question: Text;
+        options: [Text];
+        correctAnswer: Nat;
+    };
+
+    // Array to hold all trivia questions
+    var questions : [Question] = [
+        {
+            question = "What house at Hogwarts does Harry belong to?";
+            options = ["Ravenclaw", "Hufflepuff", "Gryffindor", "Slytherin"];
+            correctAnswer = 2; // Gryffindor
+        };
+        {
+            question = "What is the name of Harry Potter's pet owl?";
+            options = ["Hedwig", "Errol", "Crookshanks", "Scabbers"];
+            correctAnswer = 0; // Hedwig
+        };
+        {
+            question = "Who is the headmaster of Hogwarts?",
+            options = ["Severus Snape", "Albus Dumbledore", "Minerva McGonagall", "Rubeus Hagrid"],
+            correctAnswer = 1; // Albus Dumbledore
+        };
+        // Add more questions as needed
+    ];
+
+    // Structure to hold player data
+    type Player = {
+        name: Text;
+        score: Nat;
+    };
+
+    // Map to keep track of players' scores
+    var players: [Text : Player] = {};
+
+    // Function to start a new game for a player
+    public func startGame(playerName: Text) : async Text {
+        if (players.containsKey(playerName)) {
+            return "Game already started for player: " # playerName;
+        } else {
+            players.put(playerName, { name = playerName; score = 0 });
+            return "Game started for player: " # playerName;
+        }
+    };
+
+    // Function to answer a question
+    public func answerQuestion(playerName: Text, questionIndex: Nat, answer: Nat) : async Text {
+        if (!players.containsKey(playerName)) {
+            return "Player not found. Start a new game first.";
+        };
+        if (questionIndex >= questions.size()) {
+            return "Invalid question index.";
+        };
+        let player = players.get(playerName);
+        switch (player) {
+            case (?p) {
+                if (questions[questionIndex].correctAnswer == answer) {
+                    p.score += 1;
+                    players.put(playerName, p);
+                    return "Correct! Your score is now " # Nat.toText(p.score) # ".";
+                } else {
+                    return "Incorrect. Your score remains " # Nat.toText(p.score) # ".";
+                }
+            };
+            case null {
+                return "Player not found. Start a new game first.";
+            }
+        };
+    };
+
+    // Function to get a player's score
+    public func getScore(playerName: Text) : async ?Nat {
+        let player = players.get(playerName);
+        switch (player) {
+            case (?p) {
+                return ?p.score;
+            };
+            case null {
+                return null;
+            }
+        }
+    };
+
+    // Function to get a trivia question
+    public func getQuestion(questionIndex: Nat) : async ?Question {
+        if (questionIndex < questions.size()) {
+            return ?questions[questionIndex];
+        } else {
+            return null;
+        }
+    };
+
+}
