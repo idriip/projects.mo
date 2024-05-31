@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: MIT
+use mokoto::prelude::*;
+
+contract Web3PlatformDAO {
+    // Enums for different proposal types
+    enum ProposalType {
+        Development,
+        Marketing,
+        CommunityInitiatives,
+        Charity,
+        OperationalCosts
+    }
+
+    // Struct for a proposal
+    struct Proposal {
+        id: u64,
+        proposer: Address,
+        description: String,
+        proposal_type: ProposalType,
+        amount: u64,
+        votes_for: u64,
+        votes_against: u64,
+        executed: bool
+    }
+
+    // State variables
+    state {
+        proposals: Vec<Proposal>,
+        next_proposal_id: u64,
+        members: Set<Address>,
+        votes: Map<u64, Map<Address, bool>>,
+        treasury_balance: u64
+    }
+
+    // Events
+    event ProposalCreated(proposal_id: u64, proposer: Address, description: String, proposal_type: ProposalType, amount: u64)
+    event VoteCast(proposal_id: u64, voter: Address, support: bool)
+    event ProposalExecuted(proposal_id: u64)
+
+    // Constructor
+    function initialize(initial_members: Vec<Address>) {
+        for member in initial_members {
+            self.members.insert(member);
+        }
+        self.treasury_balance = 0;
+    }
+
+    // Modifier to check if the caller is a member
+    modifier only_member() {
+        require(self.members.contains(caller()), "Not a DAO member");
+        _
+    }
+
+    // Function to propose a new proposal
+    function propose(description: String, proposal_type: ProposalType, amount: u64) only_member() {
+        let proposal = Proposal {
+            id: self.next_proposal_id,
+            proposer: caller(),
+            description: description,
+            proposal_type: proposal_type,
+            amount: amount,
+            votes_for: 0,
+            votes_against: 0,
+            executed: false
+        };
+
+        self.proposals.push(proposal);
+        emit ProposalCreated(proposal.id, proposal.proposer, proposal.description, proposal.proposal_type, proposal.amount);
+        self.next_proposal_id += 1;
+    }
+
+    // Function to vote on a proposal
+    function vote(proposal_id: u64, support: bool) only_member() {
+        let proposal = self.proposals.get_mut(proposal_id);
+        require(!self.votes.get(proposal_id).unwrap_or(&Map::new()).contains_key(caller()), "Already voted");
+
+        if support {
+            proposal.votes_for += 1;
+        } else {
+            proposal.votes_against += 1;
+        }
+
+        self.votes.entry(proposal_id).or_insert(Map::new()).insert(caller(), true);
+        emit VoteCast(proposal_id, caller(), support);
+    }
+
+    // Function to execute a proposal
+    function execute(proposal_id: u64) only_member() {
+        let proposal = self.proposals.get_mut(proposal_id);
+        require(!proposal.executed, "Proposal already executed");
+        require(proposal.votes_for > proposal.votes_against, "Proposal not approved");
+        require(self.treasury_balance >= proposal.amount, "Insufficient funds in treasury");
+
+        // Execute the proposal (transfer funds or perform actions)
+        // Example: Transfer funds to the proposer for development purposes
+        self.treasury_balance -= proposal.amount;
+        transfer(proposal.proposer, proposal.amount); // Placeholder function for transferring funds
+
+        proposal.executed = true;
+        emit ProposalExecuted(proposal_id);
+    }
+
+    // Function to add funds to the treasury (simulates revenue from advertisements)
+    function add_funds(amount: u64) {
+        self.treasury_balance += amount;
+    }
+}
